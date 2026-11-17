@@ -1,0 +1,35 @@
+{
+  "name": "@repo/catalogue",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:apply": "bun --env-file=../../.env scripts/apply-migrations.ts",
+    "db:seed": "bun --env-file=../../.env prisma/seed.ts",
+    "verify": "bun --env-file=../../.env scripts/verify.ts",
+    "test": "bun test",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "prisma": {
+    "seed": "bun --env-file=../../.env prisma/seed.ts"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/bun": "latest",
+    "eslint": "10.9.1",
+    "prisma": "^6",
+    "typescript": "7.0.2"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.1",
+    "@prisma/adapter-neon": "^6",
+    "@prisma/client": "^6"
+  }
+}

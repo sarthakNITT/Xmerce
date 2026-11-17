@@ -1,0 +1,79 @@
+// NovaTech product catalogue, read by the AI shopping assistant (AI-A).
+//
+// These tables live in their own Postgres schema, "catalogue", on purpose:
+// the backend's own tables (User, Product, Cart, Order ...) are managed by a
+// different Prisma schema in "public", and the knowledge base is in "rag".
+// Nothing in this file can create, change or drop a table outside "catalogue".
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["catalogue"]
+}
+
+generator client {
+  provider   = "prisma-client"
+  output     = "../src/generated/prisma"
+  runtime    = "bun"
+  engineType = "client"
+}
+
+model Category {
+  id       String     @id @default(cuid())
+  name     String     @unique
+  slug     String     @unique
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@index([parentId])
+  @@schema("catalogue")
+}
+
+model Product {
+  /// Business id, for example "LAP-101".
+  id          String   @id
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  name        String
+  brand       String
+  description String
+  /// Price of the base variant, in whole rupees.
+  basePrice   Int
+  /// Maximum retail price in whole rupees; null when there is none.
+  mrp         Int?
+  rating      Decimal  @db.Decimal(2, 1)
+  reviewCount Int      @default(0)
+  images      String[]
+  /// Always has the keys listed in src/specs.ts (null when not applicable).
+  specs       Json
+  active      Boolean  @default(true)
+  popularity  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  variants ProductVariant[]
+
+  @@index([categoryId, active])
+  @@schema("catalogue")
+}
+
+/// One sellable configuration of a product.
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku       String  @unique
+  processor String?
+  ramGb     Int?
+  storageGb Int?
+  colour    String?
+  /// Whole rupees.
+  price     Int
+  stock     Int     @default(0)
+
+  @@index([productId])
+  @@index([price])
+  @@index([ramGb])
+  @@schema("catalogue")
+}

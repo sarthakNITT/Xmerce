@@ -1,0 +1,27 @@
+{
+  "name": "@repo/assistant",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "ask": "bun --env-file=../../.env src/cli.ts",
+    "test": "bun test",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@repo/catalogue": "*",
+    "@repo/rag": "*",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/bun": "latest",
+    "eslint": "10.9.1",
+    "typescript": "7.0.2"
+  }
+}

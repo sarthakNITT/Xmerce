@@ -1,0 +1,2 @@
+# Prisma client, rebuilt by `bun run db:generate` (also runs on install)
+src/generated
