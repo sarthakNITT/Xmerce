@@ -3,6 +3,7 @@ import { cacheKind } from "./lib/cache";
 import { applyCors, errorResponse, HttpError, preflight, type RequestContext } from "./lib/http";
 import { Router } from "./lib/router";
 import { startCleanupJob } from "./jobs/cleanup.job";
+import { registerAdminRoutes } from "./routes/admin.routes";
 import { registerAuthRoutes } from "./routes/auth.routes";
 import { registerCartRoutes } from "./routes/cart.routes";
 import { registerOrderRoutes } from "./routes/order.routes";
@@ -15,6 +16,7 @@ registerUserRoutes(router);
 registerProductRoutes(router);
 registerCartRoutes(router);
 registerOrderRoutes(router);
+registerAdminRoutes(router);
 
 const server = Bun.serve({
   port: appConfig.port,
