@@ -2,7 +2,7 @@ const isProduction = process.env.NODE_ENV === "production";
 
 export const appConfig = {
   isProduction,
-  port: Number(process.env.PORT) || 4000,
+  port: Number(process.env.PORT) || 3001,
 
   // Comma-separated list of frontend origins allowed to call the API with cookies.
   corsOrigins: (process.env.CORS_ORIGINS || "http://localhost:3000")

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PRODUCTS } from '../../../data/products';
+import { fetchProductsServer } from '../../../lib/catalogServer';
 import type { Cart, CartItem } from '../../../lib/cart';
 import { validateCart } from '../../../lib/cart';
 
@@ -14,7 +14,8 @@ export function resolveServerKey(req: NextRequest): string {
   return customerCode.trim();
 }
 
-export function buildServerCart(storage: Record<string, number>, customerCode?: string | null): Cart {
+export async function buildServerCart(storage: Record<string, number>, customerCode?: string | null): Promise<Cart> {
+  const PRODUCTS = await fetchProductsServer();
   const items: CartItem[] = [];
 
   for (const [prodId, qty] of Object.entries(storage)) {
@@ -59,6 +60,6 @@ export function buildServerCart(storage: Record<string, number>, customerCode?: 
 export async function GET(req: NextRequest) {
   const key = resolveServerKey(req);
   const userCart = serverCartStore.get(key) || {};
-  const cart = buildServerCart(userCart, key === 'guest_session' ? null : key);
+  const cart = await buildServerCart(userCart, key === 'guest_session' ? null : key);
   return NextResponse.json(cart);
 }

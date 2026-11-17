@@ -45,6 +45,7 @@ export const CATEGORIES: SeedCategory[] = [
   { name: "Monitors", slug: "monitors" },
   { name: "Accessories", slug: "accessories" },
   { name: "Add-ons", slug: "add-ons" },
+  { name: "Components", slug: "components" },
 ];
 
 const WINDOWS = "Windows 11 Home";
@@ -827,16 +828,95 @@ export const PRODUCTS: SeedProduct[] = [
   {
     id: "ACC-704",
     category: "accessories",
-    name: "Orbit Commuter Backpack",
+    name: "Orbit 20000 mAh USB-C Power Bank",
     brand: "Orbit",
-    description: "A laptop backpack for everyday carry. It weighs 0.8 kg.",
-    basePrice: 2999,
-    mrp: 3499,
-    rating: 4.1,
+    description: "A 20000 mAh power bank with 65 W USB-C Power Delivery that can charge most laptops. It weighs 0.4 kg.",
+    basePrice: 3499,
+    mrp: 4299,
+    rating: 4.3,
     reviewCount: 689,
     popularity: 57,
     imageCount: 2,
-    specs: makeSpecs({ weightKg: 0.8 }),
-    variants: [{ sku: "ACC-704-BLK", colour: "Black", price: 2999, stock: 35 }],
+    specs: makeSpecs({ weightKg: 0.4, ports: "2 x USB-C, 1 x USB-A" }),
+    variants: [{ sku: "ACC-704-BLK", colour: "Black", price: 3499, stock: 35 }],
   },
+  ...EXTRA(),
 ];
+
+// ---------------------------------------------------------------------------
+// Additional catalogue (brings the store to 50 electronics products).
+// ---------------------------------------------------------------------------
+function item(
+  id: string,
+  category: string,
+  name: string,
+  brand: string,
+  description: string,
+  price: number,
+  mrp: number | null,
+  rating: number,
+  reviewCount: number,
+  specs: Partial<ProductSpecs>,
+  stock: number,
+  colour = "Black",
+): SeedProduct {
+  return {
+    id,
+    category,
+    name,
+    brand,
+    description,
+    basePrice: price,
+    mrp,
+    rating,
+    reviewCount,
+    popularity: Math.min(95, Math.round(reviewCount / 20)),
+    imageCount: 2,
+    specs: makeSpecs(specs),
+    variants: [
+      {
+        sku: `${id}-${colour.toUpperCase().slice(0, 3)}`,
+        processor: specs.processor ?? undefined,
+        ramGb: specs.ramGb ?? undefined,
+        storageGb: specs.storageGb ?? undefined,
+        colour,
+        price,
+        stock,
+      },
+    ],
+  };
+}
+
+function EXTRA(): SeedProduct[] {
+  return [
+    // Laptops
+    item("LAP-113", "laptops", "Vertex Slim 13", "Vertex", "A 1.1 kg 13.3-inch ultrabook with an AMD Ryzen 7 processor, 16 GB of RAM and a 1 TB SSD. Up to 15 hours of battery life.", 72990, 79990, 4.5, 610, { processor: "AMD Ryzen 7", ramGb: 16, storageGb: TB, storageType: "SSD", screen: "13.3-inch FHD+", screenIn: 13.3, resolution: "1920x1200", refreshHz: 60, gpu: "Integrated", batteryHrs: 15, weightKg: 1.1, os: WINDOWS, ports: "2 x USB-C, 1 x USB-A" }, 12, "Silver"),
+    item("LAP-114", "laptops", "NovaBook Flex 14 2-in-1", "NovaTech", "A convertible 14-inch touchscreen laptop with pen support, Intel Core Ultra 5, 16 GB RAM and 512 GB SSD.", 69990, 76990, 4.4, 422, { processor: "Intel Core Ultra 5", ramGb: 16, storageGb: 512, storageType: "SSD", screen: "14-inch 2K touch", screenIn: 14, resolution: "2240x1400", refreshHz: 60, gpu: "Integrated", batteryHrs: 14, weightKg: 1.4, os: WINDOWS, ports: "2 x USB-C, 1 x HDMI" }, 9, "Blue"),
+    item("LAP-115", "laptops", "Vertex Student 15", "Vertex", "An affordable 15.6-inch laptop for study with Intel Core i5, 8 GB RAM and a 512 GB SSD.", 42990, 49990, 4.1, 1530, { processor: "Intel Core i5", ramGb: 8, storageGb: 512, storageType: "SSD", screen: "15.6-inch FHD", screenIn: 15.6, resolution: "1920x1080", refreshHz: 60, gpu: "Integrated", batteryHrs: 9, weightKg: 1.7, os: WINDOWS, ports: "1 x USB-C, 2 x USB-A, 1 x HDMI" }, 25),
+    item("LAP-116", "laptops", "Helix Creator 16", "Helix", "A 16-inch 3.2K creator laptop with Intel Core Ultra 9, 32 GB RAM, 2 TB SSD and a GeForce 4060 GPU.", 164990, 179990, 4.7, 288, { processor: "Intel Core Ultra 9", ramGb: 32, storageGb: 2 * TB, storageType: "SSD", screen: "16-inch 3.2K OLED", screenIn: 16, resolution: "3200x2000", refreshHz: 120, gpu: "GeForce 4060", batteryHrs: 10, weightKg: 1.9, os: WINDOWS, ports: "2 x Thunderbolt 4, 1 x HDMI, SD card" }, 5, "Graphite"),
+    // Gaming
+    item("LAP-202", "gaming", "Nova Gaming X15", "NovaTech", "A 15.6-inch 165 Hz gaming laptop with AMD Ryzen 7, 16 GB RAM, 1 TB SSD and an RTX 4060.", 109990, 124990, 4.6, 734, { processor: "AMD Ryzen 7", ramGb: 16, storageGb: TB, storageType: "SSD", screen: "15.6-inch FHD 165 Hz", screenIn: 15.6, resolution: "1920x1080", refreshHz: 165, gpu: "RTX 4060", batteryHrs: 6, weightKg: 2.3, os: WINDOWS, ports: "1 x USB-C, 3 x USB-A, 1 x HDMI, Ethernet" }, 8),
+    item("LAP-203", "gaming", "Helix Raptor 18", "Helix", "An 18-inch QHD+ 240 Hz gaming laptop with Intel Core i9, 32 GB RAM, 2 TB SSD and an RTX 4080.", 249990, 269990, 4.8, 156, { processor: "Intel Core i9", ramGb: 32, storageGb: 2 * TB, storageType: "SSD", screen: "18-inch QHD+ 240 Hz", screenIn: 18, resolution: "2560x1600", refreshHz: 240, gpu: "RTX 4080", batteryHrs: 4, weightKg: 3.1, os: WINDOWS, ports: "2 x Thunderbolt 4, 3 x USB-A, HDMI 2.1, Ethernet" }, 3),
+    // Desktops / CPUs (tower PCs)
+    item("DSK-305", "desktops", "NovaTower Home", "NovaTech", "A compact desktop CPU (tower) for home and office with Intel Core i5, 16 GB RAM and a 1 TB SSD.", 48990, 54990, 4.3, 512, { processor: "Intel Core i5", ramGb: 16, storageGb: TB, storageType: "SSD", gpu: "Integrated", weightKg: 5.2, os: WINDOWS, ports: "4 x USB-A, 2 x USB-C, HDMI, DisplayPort, Ethernet" }, 14),
+    item("DSK-306", "desktops", "Vertex Mini PC", "Vertex", "A palm-sized mini PC with AMD Ryzen 5, 16 GB RAM and a 512 GB SSD that mounts behind a monitor.", 34990, 39990, 4.4, 893, { processor: "AMD Ryzen 5", ramGb: 16, storageGb: 512, storageType: "SSD", gpu: "Integrated", weightKg: 0.6, os: WINDOWS, ports: "4 x USB-A, 1 x USB-C, 2 x HDMI, Ethernet" }, 20),
+    item("DSK-307", "desktops", "Helix Forge Performance Tower", "Helix", "A high-performance tower CPU with Intel Core i7, 32 GB RAM, 2 TB SSD and a GeForce 4070 Super graphics card.", 179990, 194990, 4.7, 241, { processor: "Intel Core i7", ramGb: 32, storageGb: 2 * TB, storageType: "SSD", gpu: "GeForce 4070 Super", weightKg: 11, os: WINDOWS, ports: "6 x USB-A, 2 x USB-C, HDMI, 3 x DisplayPort, Ethernet, Wi-Fi 7" }, 4),
+    item("DSK-308", "desktops", "NovaStation Pro Workstation", "NovaTech", "A workstation tower with AMD Ryzen 9, 64 GB RAM and a 4 TB SSD for 3D, video and data work.", 219990, 239990, 4.8, 97, { processor: "AMD Ryzen 9", ramGb: 64, storageGb: 4 * TB, storageType: "SSD", gpu: "GeForce 4080", weightKg: 13, os: "Windows 11 Pro", ports: "8 x USB-A, 2 x USB-C, 4 x DisplayPort, 10 GbE" }, 2),
+    // Monitors
+    item("MON-604", "monitors", "Vertex View 24 FHD", "Vertex", "A 24-inch Full HD IPS monitor with a 100 Hz refresh rate and thin bezels.", 9999, 12999, 4.3, 2240, { screen: "24-inch FHD IPS", screenIn: 24, resolution: "1920x1080", refreshHz: 100, weightKg: 3.2, ports: "1 x HDMI, 1 x VGA" }, 40),
+    item("MON-605", "monitors", "NovaView 32 4K", "NovaTech", "A 32-inch 4K IPS monitor with HDR400 and a USB-C port that charges a laptop at 90 W.", 38990, 44990, 4.6, 512, { screen: "32-inch 4K IPS", screenIn: 32, resolution: "3840x2160", refreshHz: 60, weightKg: 6.8, ports: "1 x USB-C 90 W, 2 x HDMI, 1 x DisplayPort" }, 10),
+    item("MON-606", "monitors", "Helix Arena 27 240Hz", "Helix", "A 27-inch QHD 240 Hz esports monitor with 1 ms response time.", 32990, 37990, 4.7, 689, { screen: "27-inch QHD 240 Hz", screenIn: 27, resolution: "2560x1440", refreshHz: 240, weightKg: 5.4, ports: "2 x HDMI 2.1, 1 x DisplayPort" }, 7),
+    item("MON-607", "monitors", "Helix Ultrawide 34", "Helix", "A 34-inch curved WQHD ultrawide monitor at 165 Hz, good for multitasking and entertainment.", 42990, 49990, 4.5, 344, { screen: "34-inch WQHD curved 165 Hz", screenIn: 34, resolution: "3440x1440", refreshHz: 165, weightKg: 7.9, ports: "2 x HDMI, 1 x DisplayPort, USB hub" }, 6),
+    item("MON-608", "monitors", "NovaView Portable 15", "NovaTech", "A 15.6-inch portable USB-C monitor for a second screen on the go. It weighs 0.7 kg.", 14990, 17990, 4.2, 455, { screen: "15.6-inch FHD portable", screenIn: 15.6, resolution: "1920x1080", refreshHz: 60, weightKg: 0.7, ports: "2 x USB-C, 1 x mini HDMI" }, 18),
+    // Accessories (electronics)
+    item("ACC-705", "accessories", "Orbit Wireless Mouse", "Orbit", "A silent wireless mouse with Bluetooth and a USB receiver, up to 12 months on one battery.", 1299, 1799, 4.4, 4120, { weightKg: 0.08, ports: "Bluetooth, 2.4 GHz USB receiver" }, 120),
+    item("ACC-706", "accessories", "Orbit Mechanical Keyboard", "Orbit", "A wireless mechanical keyboard with hot-swappable switches and RGB backlight.", 6499, 7999, 4.5, 980, { weightKg: 0.9, ports: "USB-C, Bluetooth, 2.4 GHz" }, 30),
+    item("ACC-707", "accessories", "Helix Pro Wireless Headset", "Helix", "A wireless headset with a noise-cancelling microphone and 40-hour battery.", 8999, 10999, 4.4, 765, { batteryHrs: 40, weightKg: 0.3, ports: "USB-C, 2.4 GHz, Bluetooth" }, 22),
+    item("ACC-708", "accessories", "Vertex 4K Webcam", "Vertex", "A 4K webcam with autofocus, dual microphones and a privacy shutter.", 7499, 8999, 4.3, 512, { resolution: "3840x2160", weightKg: 0.15, ports: "USB-C" }, 26),
+    // Components
+    item("CMP-801", "components", "Intel Core i7-14700K Processor", "Intel", "A 20-core desktop processor (CPU) for content creation and heavy multitasking, up to 5.6 GHz.", 38990, 44990, 4.7, 1320, { processor: "Intel Core i7-14700K" }, 15),
+    item("CMP-802", "components", "NovaDrive 2 TB NVMe SSD", "NovaTech", "A 2 TB PCIe 4.0 NVMe SSD with up to 7000 MB/s read speed.", 11999, 14999, 4.6, 2210, { storageGb: 2 * TB, storageType: "NVMe SSD" }, 45),
+    item("CMP-803", "components", "Helix GeForce 4070 Graphics Card", "Helix", "A 12 GB GeForce 4070 graphics card for 1440p play and creative work, with ray tracing and DLSS 3.", 57990, 62990, 4.7, 640, { gpu: "GeForce 4070 12 GB" }, 6),
+  ];
+}
+

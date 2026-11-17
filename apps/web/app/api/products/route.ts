@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server';
-import { fetchProductsFromDb, initDbAndSyncProducts } from '../../../lib/db';
+import { fetchProductsServer } from '../../../lib/catalogServer';
 
+/** Product list for the storefront, served from the backend (apps/backend -> Postgres). */
 export async function GET() {
   try {
-    await initDbAndSyncProducts();
-    const products = await fetchProductsFromDb();
-    return NextResponse.json({ success: true, products, source: 'neon-postgresql' });
+    const products = await fetchProductsServer();
+    return NextResponse.json({ success: true, products, source: 'xmerce-backend' });
   } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message }, { status: 502 });
   }
 }

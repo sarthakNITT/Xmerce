@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { PRODUCTS, formatINR } from '../../data/products';
+import { formatINR } from '../../data/products';
+import { useProducts } from '../../lib/catalog';
+import { useCartMap } from '../../lib/useCartMap';
+import { MyOrders } from '../../components/MyOrders';
 import { POLICIES, INTEGRATION_INFOS } from '../../data/policies';
 import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
@@ -23,6 +26,7 @@ interface Address {
 }
 
 export default function ProfilePage() {
+  const PRODUCTS = useProducts();
   // Profile State
   const [profile, setProfile] = useState({
     firstName: '',
@@ -50,7 +54,10 @@ export default function ProfilePage() {
   const [addressStatus, setAddressStatus] = useState('');
 
   // Cart State (for shared header)
-  const [cart, setCart] = useState<Record<string, number>>({});
+  // Bag contents come from the backend cart (apps/backend /api/cart).
+  const { cart, add: addCartItem, step: stepCartItem, remove: removeCartItem } = useCartMap();
+  // The old localStorage bag sync below is kept as a no-op until it is removed.
+  const setCart = (_: unknown) => {};
   const [searchQuery, setSearchQuery] = useState('');
 
   // Dialog State (for header modals)
@@ -698,19 +705,8 @@ export default function ProfilePage() {
               </p>
             </section>
 
-            {/* 4. My Orders Section */}
-            <section id="orders" className="panel">
-              <div className="panel-head">
-                <h2>My orders</h2>
-                <span className="badge">Service pending</span>
-              </div>
-              <p className="muted" style={{ marginBottom: 16 }}>
-                Connect your account to view orders and follow their progress from Confirmed to Packed, Shipped and Delivered.
-              </p>
-              <Link className="btn btn-outline" href="/search">
-                Explore the collection ↗
-              </Link>
-            </section>
+            {/* 4. My Orders Section (live from the backend) */}
+            <MyOrders />
 
             {/* 5. Account Security Section */}
             <section id="security" className="panel">

@@ -1,4 +1,5 @@
-import { PRODUCTS, type Product } from '../data/products';
+import type { Product } from '../data/products';
+import { fetchProductsServer } from './catalogServer';
 import { callDecisionsApi } from './openrouter';
 
 export interface CustomerContext {
@@ -49,6 +50,7 @@ export async function getPersonalizedRecommendations(
   }
 
   // 2. Heuristic and Purchase-Affinity Scoring
+  const PRODUCTS = await fetchProductsServer();
   const scoredProducts = PRODUCTS.map((product) => {
     let score = 0.5;
     let reason = 'Popular in the NovaTech catalogue';

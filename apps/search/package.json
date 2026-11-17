@@ -1,0 +1,9 @@
+{
+  "name": "search",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Local Meilisearch server (open-source search engine) used by apps/backend for product search.",
+  "scripts": {
+    "dev": "sh ./dev.sh"
+  }
+}

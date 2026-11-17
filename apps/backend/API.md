@@ -1,6 +1,6 @@
 # Xmerce Backend API
 
-Base URL: `http://localhost:4000`. All responses are JSON: `{ "success": true, ... }` or
+Base URL: `http://localhost:3001` (AI service: `http://localhost:3002`). All responses are JSON: `{ "success": true, ... }` or
 `{ "success": false, "error": "message", "code": "MACHINE_CODE" }`.
 
 ## Calling the API from the frontend

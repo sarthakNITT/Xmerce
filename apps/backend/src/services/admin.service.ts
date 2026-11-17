@@ -100,7 +100,7 @@ export async function adminCreateProduct(input: ProductInput & { title: string; 
         inStock: (input.stockCount ?? 0) > 0,
       },
     });
-    await invalidateSearchCache();
+    await invalidateSearchCache([product.id]);
     return product;
   } catch (err) {
     mapPrismaError(err);
@@ -113,7 +113,7 @@ export async function adminUpdateProduct(id: string, input: ProductInput) {
       where: { id },
       data: { ...toDbData(input), ...(input.slug ? { slug: slugify(input.slug) } : {}) },
     });
-    await invalidateSearchCache();
+    await invalidateSearchCache([product.id]);
     return product;
   } catch (err) {
     mapPrismaError(err);
@@ -132,7 +132,7 @@ export async function adminDeleteProduct(id: string) {
   try {
     // Order history keeps its snapshot (OrderItem.productId is set to null); cart lines are removed.
     await prisma.product.delete({ where: { id } });
-    await invalidateSearchCache();
+    await invalidateSearchCache([id]);
   } catch (err) {
     mapPrismaError(err);
   }

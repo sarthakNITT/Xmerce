@@ -129,6 +129,7 @@ async function cancelInTx(
  */
 export async function placeOrder(userId: string, shippingAddress: ShippingAddress) {
   let soldOut = false;
+  let reservedIds: string[] = [];
 
   const order = await prisma.$transaction(async (tx) => {
     const previous = await tx.order.findMany({
@@ -163,6 +164,7 @@ export async function placeOrder(userId: string, shippingAddress: ShippingAddres
       data: { inStock: false },
     });
     soldOut = markedOut.count > 0;
+    reservedIds = cart.items.map((i) => i.productId);
 
     const lines = cart.items.map((i) => ({
       productId: i.productId,
@@ -189,7 +191,7 @@ export async function placeOrder(userId: string, shippingAddress: ShippingAddres
   }, TX_OPTIONS);
 
   // Products that just sold out should drop out of "in stock" search results.
-  if (soldOut) await invalidateSearchCache();
+  await invalidateSearchCache(soldOut ? reservedIds : []);
   return toOrderView(order);
 }
 
@@ -248,7 +250,7 @@ export async function payForOrder(
   if (order.status === "CANCELLED") throw new HttpError(409, "This order was cancelled", "ORDER_CANCELLED");
   if (order.expiresAt && order.expiresAt < new Date()) {
     await prisma.$transaction((tx) => cancelInTx(tx, order));
-    await invalidateSearchCache();
+    await invalidateSearchCache(order.items.map((i) => i.productId));
     throw new HttpError(410, "This order expired before payment. Please place it again.", "ORDER_EXPIRED");
   }
 
@@ -295,7 +297,7 @@ export async function cancelOrder(userId: string, orderId: string) {
     }
   });
 
-  await invalidateSearchCache();
+  await invalidateSearchCache(order.items.map((i) => i.productId));
   return await getOrder(userId, orderId);
 }
 
@@ -307,9 +309,13 @@ export async function expireStaleOrders(): Promise<number> {
     take: 100,
   });
   let count = 0;
+  const touched: (string | null)[] = [];
   for (const order of stale) {
-    if (await prisma.$transaction((tx) => cancelInTx(tx, order))) count++;
+    if (await prisma.$transaction((tx) => cancelInTx(tx, order))) {
+      count++;
+      touched.push(...order.items.map((i) => i.productId));
+    }
   }
-  if (count > 0) await invalidateSearchCache();
+  if (count > 0) await invalidateSearchCache(touched);
   return count;
 }

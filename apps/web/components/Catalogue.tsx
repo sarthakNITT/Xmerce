@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Product, CategoryType } from '../data/products';
-import { PRODUCTS, CATEGORIES, formatINR, calculateSaving } from '../data/products';
+import { CATEGORIES, formatINR, calculateSaving } from '../data/products';
+import { useProducts } from '../lib/catalog';
+import { useProductSearch } from '../lib/useProductSearch';
 import { DeviceArt } from './DeviceArt';
 
 interface CatalogueProps {
@@ -20,6 +22,9 @@ export const Catalogue: React.FC<CatalogueProps> = ({
   onQuickView,
   onAddToCart,
 }) => {
+  const PRODUCTS = useProducts();
+  // Search bar text is matched by the backend (Meilisearch), not in the browser.
+  const search = useProductSearch(searchQuery);
   const [budget, setBudget] = useState<number>(0);
   const [processor, setProcessor] = useState<string>('');
   const [ram, setRam] = useState<number>(0);
@@ -34,7 +39,7 @@ export const Catalogue: React.FC<CatalogueProps> = ({
 
   // Filtered & Sorted products
   const filteredProducts = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const rank = search.ids ? new Map(search.ids.map((id, i) => [id, i])) : null;
 
     const matches = PRODUCTS.filter((p) => {
       // Category filter
@@ -46,29 +51,28 @@ export const Catalogue: React.FC<CatalogueProps> = ({
         return false;
       }
       // Processor filter
-      if (processor && p.cpu !== processor) {
+      if (processor && !p.cpu.includes(processor)) {
         return false;
       }
       // RAM filter
       if (ram > 0 && p.ram < ram) {
         return false;
       }
-      // Free text search
-      if (q) {
-        const hay = `${p.name} ${p.cpu} ${p.specs} ${p.category}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
+      // Free text search: keep only Meilisearch hits
+      if (rank && !rank.has(p.id)) return false;
       return true;
     });
 
-    if (sort === 'low') {
+    if (rank && sort !== 'low' && sort !== 'high') {
+      matches.sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+    } else if (sort === 'low') {
       matches.sort((a, b) => a.price - b.price);
     } else if (sort === 'high') {
       matches.sort((a, b) => b.price - a.price);
     }
 
     return matches;
-  }, [searchQuery, selectedCategory, budget, processor, ram, sort]);
+  }, [PRODUCTS, search.ids, selectedCategory, budget, processor, ram, sort]);
 
   const itemsPerPage = 4;
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));

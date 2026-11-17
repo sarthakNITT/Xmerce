@@ -4,7 +4,8 @@
  * The browser calls this same-origin route, so the backend needs no CORS
  * setup and its address stays on the server.
  */
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:4000";
+// AI service (apps/ai) runs separately on port 3002.
+const BACKEND_URL = process.env.AI_SERVICE_URL ?? "http://localhost:3002";
 const TIMEOUT_MS = 20_000;
 
 export async function POST(request: Request): Promise<Response> {

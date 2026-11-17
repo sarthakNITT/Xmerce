@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { PRODUCTS, formatINR } from '../data/products';
+import { formatINR } from '../data/products';
+import { useProducts } from '../lib/catalog';
 
 interface AiShoppingAssistantProps {
   onAddToCart: (productId: string) => void;
 }
 
 export const AiShoppingAssistant: React.FC<AiShoppingAssistantProps> = ({ onAddToCart }) => {
+  const PRODUCTS = useProducts();
   const [needText, setNeedText] = useState('');
   const [loading, setLoading] = useState(false);
   const [resultHtml, setResultHtml] = useState<React.ReactNode | null>(null);

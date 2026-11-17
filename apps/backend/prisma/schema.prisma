@@ -49,6 +49,7 @@ model Product {
   slug        String   @unique
   description String
   price       Float
+  mrp         Float?
   brand       String?
   rating      Float    @default(0.0)
   reviewCount Int      @default(0)
@@ -57,6 +58,8 @@ model Product {
   images      String[]
   tags        String[]
   color       String?
+  /// Computer specs (processor, ramGb, storageGb, screen, gpu, batteryHrs, weightKg, os, ...)
+  specs       Json?
 
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)

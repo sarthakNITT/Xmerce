@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { CategoryType } from '../data/products';
-import { PRODUCTS, formatINR, calculateSaving } from '../data/products';
+import { formatINR, calculateSaving } from '../data/products';
+import { useProducts } from '../lib/catalog';
+import { useCartMap } from '../lib/useCartMap';
 import { POLICIES, INTEGRATION_INFOS } from '../data/policies';
 import { Header } from '../components/Header';
 import { Hero } from '../components/Hero';
@@ -16,9 +18,13 @@ import { DeviceArt } from '../components/DeviceArt';
 const CART_STORAGE_KEY = 'novatech-demo-cart';
 
 export default function HomePage() {
+  const PRODUCTS = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('All');
-  const [cart, setCart] = useState<Record<string, number>>({});
+  // Bag contents come from the backend cart (apps/backend /api/cart).
+  const { cart, add: addCartItem, step: stepCartItem, remove: removeCartItem } = useCartMap();
+  // The old localStorage bag sync below is kept as a no-op until it is removed.
+  const setCart = (_: unknown) => {};
   const [announcement, setAnnouncement] = useState('');
 
   // Dialog state
@@ -35,10 +41,11 @@ export default function HomePage() {
           const parsed = JSON.parse(saved);
           if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
             const validatedCart: Record<string, number> = {};
-            for (const p of PRODUCTS) {
-              const qty = parsed[p.id];
-              if (Number.isInteger(qty) && qty > 0) {
-                validatedCart[p.id] = Math.min(qty, 99);
+            // Keep saved ids until the catalogue has loaded from the backend.
+            for (const [id, qty] of Object.entries(parsed as Record<string, unknown>)) {
+              if (PRODUCTS.length && !PRODUCTS.some((p) => p.id === id)) continue;
+              if (typeof qty === 'number' && Number.isInteger(qty) && qty > 0) {
+                validatedCart[id] = Math.min(qty, 99);
               }
             }
             setCart(validatedCart);
@@ -54,7 +61,7 @@ export default function HomePage() {
       window.removeEventListener('storage', syncCart);
       window.removeEventListener('novatech:cart-updated', syncCart);
     };
-  }, []);
+  }, [PRODUCTS]);
 
   // 2. Persist Cart on updates
   const persistCart = useCallback((updated: Record<string, number>) => {
@@ -90,50 +97,17 @@ export default function HomePage() {
   const addToCart = useCallback((productId: string) => {
     const product = PRODUCTS.find((p) => p.id === productId);
     if (!product) return;
-
-    setCart((prev) => {
-      const nextQty = Math.min((prev[productId] || 0) + 1, 99);
-      const updated = { ...prev, [productId]: nextQty };
-      try {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updated));
-        window.dispatchEvent(new CustomEvent('novatech:cart-updated'));
-      } catch {}
-      return updated;
-    });
-
-    setAnnouncement(`${product.name} added to demo bag.`);
-  }, []);
+    addCartItem(productId);
+    setAnnouncement(`${product.name} added to your bag.`);
+  }, [PRODUCTS, addCartItem]);
 
   const updateQuantity = useCallback((productId: string, step: number) => {
-    setCart((prev) => {
-      const nextQty = (prev[productId] || 0) + step;
-      const updated = { ...prev };
-      if (nextQty <= 0) {
-        delete updated[productId];
-      } else {
-        updated[productId] = Math.min(nextQty, 99);
-      }
-      try {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updated));
-        window.dispatchEvent(new CustomEvent('novatech:cart-updated'));
-      } catch {}
-      return updated;
-    });
-    setAnnouncement('Bag quantity updated');
-  }, []);
+    stepCartItem(productId, step, cart[productId] || 0);
+  }, [cart, stepCartItem]);
 
   const removeItem = useCallback((productId: string) => {
-    setCart((prev) => {
-      const updated = { ...prev };
-      delete updated[productId];
-      try {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updated));
-        window.dispatchEvent(new CustomEvent('novatech:cart-updated'));
-      } catch {}
-      return updated;
-    });
-    setAnnouncement('Item removed');
-  }, []);
+    removeCartItem(productId);
+  }, [removeCartItem]);
 
   // Show Cart in Dialog
   const showCart = useCallback(() => {
@@ -402,7 +376,8 @@ export default function HomePage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [closePanel]);
 
-  const heroProduct = PRODUCTS[0] || PRODUCTS[0];
+  // The hero copy is written for the NovaBook Air 14 (LAP-101).
+  const heroProduct = PRODUCTS.find((p) => p.id === 'LAP-101') ?? PRODUCTS[0];
   if (!heroProduct) return null;
 
   return (

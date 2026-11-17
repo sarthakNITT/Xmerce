@@ -38,7 +38,7 @@ export async function PATCH(
     userCart[lineId] = n;
     store.set(key, userCart);
 
-    const cart = buildServerCart(userCart, key === 'guest_session' ? null : key);
+    const cart = await buildServerCart(userCart, key === 'guest_session' ? null : key);
     return NextResponse.json(cart);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
@@ -59,7 +59,7 @@ export async function DELETE(
     store.set(key, userCart);
 
     // As required by API contract: return full updated cart, not 204
-    const cart = buildServerCart(userCart, key === 'guest_session' ? null : key);
+    const cart = await buildServerCart(userCart, key === 'guest_session' ? null : key);
     return NextResponse.json(cart);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });

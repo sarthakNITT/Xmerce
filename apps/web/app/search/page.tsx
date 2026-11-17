@@ -4,7 +4,10 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import type { Product, CategoryType } from '../../data/products';
-import { PRODUCTS, CATEGORIES, FACETS_CONFIG, formatINR, calculateSaving } from '../../data/products';
+import { CATEGORIES, FACETS_CONFIG, formatINR, calculateSaving } from '../../data/products';
+import { useProducts } from '../../lib/catalog';
+import { useProductSearch } from '../../lib/useProductSearch';
+import { useCartMap } from '../../lib/useCartMap';
 import { POLICIES, INTEGRATION_INFOS } from '../../data/policies';
 import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
@@ -12,15 +15,20 @@ import { DeviceArt } from '../../components/DeviceArt';
 
 const CART_STORAGE_KEY = 'novatech-demo-cart';
 const RECENT_SEARCHES_KEY = 'novatech-search-recent-v1';
-const PRICE_LIMIT = 150000;
+// Above the most expensive product (₹2,49,990), so the default range shows the full catalogue.
+const PRICE_LIMIT = 300000;
 const PAGE_SIZE = 6;
 
 function SearchContent() {
+  const PRODUCTS = useProducts();
   const searchParams = useSearchParams();
   const router = useRouter();
 
   // Search and Filter State
   const [query, setQuery] = useState('');
+  // Text queries are answered by the backend (Meilisearch): typo-tolerant and ranked.
+  const search = useProductSearch(query);
+  const searchRank = useMemo(() => (search.ids ? new Map(search.ids.map((id, i) => [id, i])) : null), [search.ids]);
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(PRICE_LIMIT);
   const [sort, setSort] = useState<'featured' | 'low' | 'high'>('featured');
@@ -34,7 +42,10 @@ function SearchContent() {
   });
 
   const [page, setPage] = useState(1);
-  const [cart, setCart] = useState<Record<string, number>>({});
+  // Bag contents come from the backend cart (apps/backend /api/cart).
+  const { cart, add: addCartItem, step: stepCartItem, remove: removeCartItem } = useCartMap();
+  // The old localStorage bag sync below is kept as a no-op until it is removed.
+  const setCart = (_: unknown) => {};
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -148,45 +159,17 @@ function SearchContent() {
   const addToCart = useCallback((productId: string) => {
     const product = PRODUCTS.find((p) => p.id === productId);
     if (!product) return;
-    setCart((prev) => {
-      const updated = { ...prev, [productId]: (prev[productId] || 0) + 1 };
-      try {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updated));
-        window.dispatchEvent(new CustomEvent('novatech:cart-updated'));
-      } catch {}
-      return updated;
-    });
-    setAnnouncement(`${product.name} added to demo bag.`);
-  }, []);
+    addCartItem(productId);
+    setAnnouncement(`${product.name} added to your bag.`);
+  }, [PRODUCTS, addCartItem]);
 
   const updateQuantity = useCallback((productId: string, step: number) => {
-    setCart((prev) => {
-      const updated = { ...prev };
-      const next = (updated[productId] || 0) + step;
-      if (next <= 0) {
-        delete updated[productId];
-      } else {
-        updated[productId] = next;
-      }
-      try {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updated));
-        window.dispatchEvent(new CustomEvent('novatech:cart-updated'));
-      } catch {}
-      return updated;
-    });
-  }, []);
+    stepCartItem(productId, step, cart[productId] || 0);
+  }, [cart, stepCartItem]);
 
   const removeItem = useCallback((productId: string) => {
-    setCart((prev) => {
-      const updated = { ...prev };
-      delete updated[productId];
-      try {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updated));
-        window.dispatchEvent(new CustomEvent('novatech:cart-updated'));
-      } catch {}
-      return updated;
-    });
-  }, []);
+    removeCartItem(productId);
+  }, [removeCartItem]);
 
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
 
@@ -511,18 +494,15 @@ function SearchContent() {
       // Price range
       if (p.price < minPrice || p.price > maxPrice) return false;
 
-      // Text query
-      if (q) {
-        const textBlob = `${p.name} ${p.category} ${p.brand} ${p.cpu} ${p.ram}GB ${p.specs} ${p.storage || ''} ${p.screen || ''}`.toLowerCase();
-        const tokens = q.split(' ').filter(Boolean);
-        if (!tokens.every((t) => textBlob.includes(t))) return false;
-      }
+      // Text query: keep only Meilisearch hits
+      if (q && searchRank && !searchRank.has(p.id)) return false;
 
       // Checkbox facets
       for (const [key, values] of Object.entries(selectedFacets)) {
         if (values.length > 0) {
           const productValue = String((p as any)[key] || '');
-          if (!values.includes(productValue)) return false;
+          // DB processor names are longer ("Intel Core Ultra 5"), so match by substring.
+          if (!values.some((v) => (key === 'cpu' ? productValue.includes(v) : productValue === v))) return false;
         }
       }
 
@@ -530,19 +510,18 @@ function SearchContent() {
     }).sort((a, b) => {
       if (sort === 'low') return a.price - b.price;
       if (sort === 'high') return b.price - a.price;
+      if (searchRank) return (searchRank.get(a.id) ?? 0) - (searchRank.get(b.id) ?? 0);
       return 0;
     });
-  }, [query, minPrice, maxPrice, selectedFacets, sort]);
+  }, [PRODUCTS, query, searchRank, minPrice, maxPrice, selectedFacets, sort]);
 
   // Facet count calculator
   const getFacetCount = (key: string, value: string) => {
     return PRODUCTS.filter((p) => {
       if (p.price < minPrice || p.price > maxPrice) return false;
-      if (query) {
-        const textBlob = `${p.name} ${p.category} ${p.brand} ${p.cpu} ${p.ram}GB ${p.specs}`.toLowerCase();
-        if (!textBlob.includes(query.toLowerCase())) return false;
-      }
-      return String((p as any)[key] || '') === value;
+      if (query && searchRank && !searchRank.has(p.id)) return false;
+      const productValue = String((p as any)[key] || '');
+      return key === 'cpu' ? productValue.includes(value) : productValue === value;
     }).length;
   };
 
@@ -573,7 +552,7 @@ function SearchContent() {
       }
     }
     return chips;
-  }, [query, minPrice, maxPrice, selectedFacets]);
+  }, [PRODUCTS, query, minPrice, maxPrice, selectedFacets]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const paginated = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);

@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../config/db";
 import { appConfig } from "../config/app";
 import { cache } from "../lib/cache";
+import { isSearchAvailable, productIndex, syncProducts, type ProductDoc } from "../lib/search";
 
 export interface SearchProductsParams {
   query?: string;
@@ -27,7 +28,15 @@ export interface ProductCard {
   slug: string;
   title: string;
   price: number;
+  mrp: number | null;
   thumbnail: string | null;
+  brand: string | null;
+  rating: number;
+  reviewCount: number;
+  inStock: boolean;
+  category: { name: string; slug: string } | null;
+  /** Spec summary the storefront cards show (processor, ram, screen...). */
+  specs: unknown;
 }
 
 export interface SearchResult {
@@ -35,12 +44,14 @@ export interface SearchResult {
   pagination: { total: number; page: number; limit: number; totalPages: number; hasMore: boolean };
 }
 
-const SEARCH_VERSION_KEY = "search:version";
+const SEARCH_VERSION_KEY = "search:version:v2";
 const SORTS = new Set(["price_asc", "price_desc", "rating_desc", "newest"]);
 
 /** Bumps the cache version so every cached listing is ignored from now on. */
-export async function invalidateSearchCache() {
+export async function invalidateSearchCache(productIds: (string | null)[] = []) {
   await cache.incr(SEARCH_VERSION_KEY);
+  // Mirror the changed products (price, title, stock, deletion) into Meilisearch.
+  await syncProducts(productIds.filter((id): id is string => !!id));
 }
 
 async function cacheKey(prefix: string, params: object): Promise<string> {
@@ -68,16 +79,81 @@ function normalizeParams(params: SearchProductsParams) {
 }
 
 /** Search listing: served from cache when possible, otherwise from the DB and then cached. */
-export async function searchProducts(rawParams: SearchProductsParams): Promise<SearchResult & { cached: boolean }> {
+export async function searchProducts(
+  rawParams: SearchProductsParams,
+): Promise<SearchResult & { cached: boolean; engine: "meilisearch" | "postgres" }> {
   const params = normalizeParams(rawParams);
+
+  // Primary path: Meilisearch (typo-tolerant, ranked). Falls back to Postgres if it is down.
+  if (isSearchAvailable()) {
+    try {
+      return { ...(await searchWithMeili(params)), cached: false, engine: "meilisearch" };
+    } catch (err) {
+      console.warn("[search] Meilisearch query failed, using Postgres:", (err as Error).message);
+    }
+  }
+
   const key = await cacheKey("search", params);
 
   const hit = await cache.get<SearchResult>(key);
-  if (hit) return { ...hit, cached: true };
+  if (hit) return { ...hit, cached: true, engine: "postgres" };
 
   const result = await searchProductsFromDb(params);
   await cache.set(key, result, appConfig.searchCacheTtlSeconds);
-  return { ...result, cached: false };
+  return { ...result, cached: false, engine: "postgres" };
+}
+
+const quote = (v: string) => `"${v.replace(/"/g, '\\"')}"`;
+
+const toCard = (d: ProductDoc): ProductCard => ({
+  id: d.id,
+  slug: d.slug,
+  title: d.title,
+  price: d.price,
+  mrp: d.mrp,
+  thumbnail: d.thumbnail,
+  brand: d.brand,
+  rating: d.rating,
+  reviewCount: d.reviewCount,
+  inStock: d.inStock,
+  category: d.category,
+  specs: d.specs,
+});
+
+async function searchWithMeili(params: ReturnType<typeof normalizeParams>): Promise<SearchResult> {
+  const filter: string[] = [];
+  if (params.category) filter.push(`categorySlug = ${quote(params.category)}`);
+  if (params.brand) filter.push(`brand = ${quote(params.brand)}`);
+  if (params.minPrice !== undefined) filter.push(`price >= ${params.minPrice}`);
+  if (params.maxPrice !== undefined) filter.push(`price <= ${params.maxPrice}`);
+  if (params.inStock !== undefined) filter.push(`inStock = ${params.inStock}`);
+  if (params.minRating !== undefined) filter.push(`rating >= ${params.minRating}`);
+
+  const sort =
+    params.sortBy === "price_asc"
+      ? ["price:asc"]
+      : params.sortBy === "price_desc"
+        ? ["price:desc"]
+        : params.sortBy === "rating_desc"
+          ? ["rating:desc"]
+          : params.sortBy === "newest"
+            ? ["createdAt:desc"]
+            : params.query
+              ? undefined // relevance
+              : ["rating:desc"];
+
+  const res = await productIndex.search(params.query ?? "", {
+    filter,
+    sort,
+    page: params.page,
+    hitsPerPage: params.limit,
+  });
+  const total = res.totalHits ?? res.hits.length;
+  const totalPages = res.totalPages ?? Math.ceil(total / params.limit);
+  return {
+    data: res.hits.map((h) => toCard(h as ProductDoc)),
+    pagination: { total, page: params.page, limit: params.limit, totalPages, hasMore: params.page < totalPages },
+  };
 }
 
 async function searchProductsFromDb(params: ReturnType<typeof normalizeParams>): Promise<SearchResult> {
@@ -119,7 +195,21 @@ async function searchProductsFromDb(params: ReturnType<typeof normalizeParams>):
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
-      select: { id: true, slug: true, title: true, price: true, images: true },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        price: true,
+        mrp: true,
+        images: true,
+        brand: true,
+        rating: true,
+        reviewCount: true,
+        inStock: true,
+        stockCount: true,
+        specs: true,
+        category: { select: { name: true, slug: true } },
+      },
       orderBy: [orderBy, { id: "asc" }],
       skip,
       take: limit,
@@ -127,7 +217,20 @@ async function searchProductsFromDb(params: ReturnType<typeof normalizeParams>):
   ]);
 
   return {
-    data: rows.map((p) => ({ id: p.id, slug: p.slug, title: p.title, price: p.price, thumbnail: p.images[0] ?? null })),
+    data: rows.map((p) => ({
+      id: p.id,
+      slug: p.slug,
+      title: p.title,
+      price: p.price,
+      mrp: p.mrp,
+      thumbnail: p.images[0] ?? null,
+      brand: p.brand,
+      rating: p.rating,
+      reviewCount: p.reviewCount,
+      inStock: p.inStock && p.stockCount > 0,
+      category: p.category,
+      specs: p.specs,
+    })),
     pagination: {
       total,
       page,
@@ -142,6 +245,18 @@ async function searchProductsFromDb(params: ReturnType<typeof normalizeParams>):
 export async function getSearchSuggestions(keyword: string) {
   const trimmed = keyword.trim().toLowerCase();
   if (!trimmed) return [];
+
+  if (isSearchAvailable()) {
+    try {
+      const res = await productIndex.search(trimmed, {
+        limit: 8,
+        attributesToRetrieve: ["id", "slug", "title", "price"],
+      });
+      return res.hits.map((h) => ({ id: h.id, slug: h.slug, title: h.title, price: h.price }));
+    } catch {
+      // fall through to Postgres
+    }
+  }
 
   const key = await cacheKey("suggest", { q: trimmed });
   const hit = await cache.get<{ id: string; slug: string; title: string; price: number }[]>(key);

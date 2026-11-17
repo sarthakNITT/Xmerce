@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PRODUCTS } from '../../../../data/products';
+import { fetchProductsServer } from '../../../../lib/catalogServer';
 import { resolveServerKey, buildServerCart } from '../route';
 
 // We share access to the serverCartStore or global map
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'That quantity is not available.' }, { status: 422 });
     }
 
-    const product = PRODUCTS.find((p) => p.id === variantId);
+    const product = (await fetchProductsServer()).find((p) => p.id === variantId);
     if (!product) {
       return NextResponse.json({ error: 'Stock or price changed. Reload the cart.' }, { status: 409 });
     }
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     userCart[variantId] = nextQty;
     store.set(key, userCart);
 
-    const cart = buildServerCart(userCart, key === 'guest_session' ? null : key);
+    const cart = await buildServerCart(userCart, key === 'guest_session' ? null : key);
     return NextResponse.json(cart);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
