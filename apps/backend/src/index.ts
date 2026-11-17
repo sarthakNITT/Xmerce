@@ -1,4 +1,5 @@
 import { handleAuthRoutes } from "./routes/auth.routes";
+import { handleProductRoutes } from "./routes/product.routes";
 
 const PORT = Number(process.env.PORT) || 4000;
 
@@ -30,9 +31,15 @@ const server = Bun.serve({
     // Auth & Webhook routes
     const authResponse = await handleAuthRoutes(req, url.pathname);
     if (authResponse) {
-      // Add CORS headers to response
       authResponse.headers.set("Access-Control-Allow-Origin", "*");
       return authResponse;
+    }
+
+    // Product & Search routes
+    const productResponse = await handleProductRoutes(req, url.pathname);
+    if (productResponse) {
+      productResponse.headers.set("Access-Control-Allow-Origin", "*");
+      return productResponse;
     }
 
     return Response.json({ error: "Route not found" }, { status: 404 });
