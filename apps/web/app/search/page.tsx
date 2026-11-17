@@ -301,7 +301,7 @@ function SearchContent() {
             )}
           </div>
           <p className="notice">
-            Sample catalogue. Stock availability is unknown until the live service is connected.
+            Live price from the NovaTech catalogue. Stock is checked when you add it to your bag.
           </p>
           <button
             type="button"
@@ -311,12 +311,12 @@ function SearchContent() {
               closePanel();
             }}
           >
-            Add to demo bag +
+            Add to bag +
           </button>
         </div>
       );
     },
-    [openPanel, closePanel, addToCart]
+    [PRODUCTS, openPanel, closePanel, addToCart]
   );
 
   const handlePolicy = useCallback(
@@ -962,7 +962,7 @@ function SearchContent() {
                           className="btn product-add-btn"
                           onClick={() => addToCart(p.id)}
                         >
-                          Add to demo bag +
+                          Add to bag +
                         </button>
 
                         <label className="compare-check">
@@ -1055,7 +1055,7 @@ function SearchContent() {
                           style={{ minHeight: 38, padding: '8px', fontSize: 12 }}
                           onClick={() => addToCart(rp.id)}
                         >
-                          Add to demo bag +
+                          Add to bag +
                         </button>
                       </article>
                     ))}

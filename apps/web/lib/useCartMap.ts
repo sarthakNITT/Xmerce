@@ -1,5 +1,6 @@
 'use client';
 
+import { useAuth } from '@clerk/nextjs';
 import { useCallback, useEffect, useState } from 'react';
 import type { Cart } from './cart';
 import { cartApi } from './cart';
@@ -10,6 +11,7 @@ import { cartApi } from './cart';
  * 'novatech:cart-updated' event.
  */
 export function useCartMap() {
+  const { userId } = useAuth();
   const [cart, setCartState] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +28,7 @@ export function useCartMap() {
     };
     window.addEventListener('novatech:cart-updated', onUpdate);
     return () => window.removeEventListener('novatech:cart-updated', onUpdate);
-  }, [apply]);
+  }, [apply, userId]);
 
   const run = useCallback((p: Promise<Cart>) => {
     p.then((c) => setError(null)).catch((e: Error) => setError(e.message));

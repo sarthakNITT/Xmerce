@@ -5,6 +5,7 @@ import type { CategoryType } from '../data/products';
 import { formatINR, calculateSaving } from '../data/products';
 import { useProducts } from '../lib/catalog';
 import { useCartMap } from '../lib/useCartMap';
+import { Recommendations } from '../components/Recommendations';
 import { POLICIES, INTEGRATION_INFOS } from '../data/policies';
 import { Header } from '../components/Header';
 import { Hero } from '../components/Hero';
@@ -252,7 +253,7 @@ export default function HomePage() {
           )}
         </div>
         <p className="notice">
-          Sample catalogue. Stock availability is unknown until the live service is connected.
+          Live price from the NovaTech catalogue. Stock is checked when you add it to your bag.
         </p>
         <button
           type="button"
@@ -263,11 +264,11 @@ export default function HomePage() {
             closePanel();
           }}
         >
-          Add to demo bag +
+          Add to bag +
         </button>
       </div>
     );
-  }, [openPanel, closePanel, addToCart]);
+  }, [PRODUCTS, openPanel, closePanel, addToCart]);
 
   // Show Policy Details
   const handlePolicy = useCallback((key: string) => {
@@ -413,6 +414,9 @@ export default function HomePage() {
         />
 
         {/* 3. Catalogue Grid */}
+        {/* Recommendation engine: top rated, or based on the signed-in user's orders */}
+        <Recommendations onQuickView={handleQuickView} onAddToCart={addToCart} />
+
         <Catalogue
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -423,7 +427,7 @@ export default function HomePage() {
         />
 
         {/* 4. AI Shopping Assistant */}
-        <AiShoppingAssistant onAddToCart={addToCart} />
+        <AiShoppingAssistant onAddToCart={addToCart} onQuickView={handleQuickView} />
 
         {/* 5. Policy Assistant ("Ask NovaTech") & NovaClub */}
         <PolicyAssistant

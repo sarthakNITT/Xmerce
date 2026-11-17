@@ -275,7 +275,7 @@ export const Catalogue: React.FC<CatalogueProps> = ({
                 </div>
 
                 <div className="stock">
-                  Stock not connected · sample pricing
+                  {p.rating ? `${p.rating.toFixed(1)}★ · ${(p.reviewsCount ?? 0).toLocaleString('en-IN')} reviews` : 'In the NovaTech catalogue'}
                 </div>
 
                 <button
@@ -285,7 +285,7 @@ export const Catalogue: React.FC<CatalogueProps> = ({
                   onClick={() => handleAdd(p.id)}
                   aria-label={`Add ${p.name} to shopping bag`}
                 >
-                  <span>{isJustAdded ? 'Added ✓' : 'Add to demo bag'}</span>
+                  <span>{isJustAdded ? 'Added ✓' : 'Add to bag'}</span>
                   <span className="btn-icon" aria-hidden="true">{isJustAdded ? '✓' : '+'}</span>
                 </button>
               </article>

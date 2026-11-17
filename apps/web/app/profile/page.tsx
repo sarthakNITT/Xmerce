@@ -6,6 +6,9 @@ import { formatINR } from '../../data/products';
 import { useProducts } from '../../lib/catalog';
 import { useCartMap } from '../../lib/useCartMap';
 import { MyOrders } from '../../components/MyOrders';
+import { SignInButton, useAuth } from '@clerk/nextjs';
+import { backendFetch } from '../../lib/cart';
+import { LogoutButton } from '../../components/SignOutButton';
 import { POLICIES, INTEGRATION_INFOS } from '../../data/policies';
 import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
@@ -25,8 +28,26 @@ interface Address {
   isDefault: boolean;
 }
 
+interface Account {
+  user: {
+    id: string;
+    email: string;
+    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+    authProvider: string;
+    role: 'USER' | 'ADMIN';
+    createdAt: string;
+  };
+  stats: { totalOrders: number; paidOrders: number; pendingOrders: number; cancelledOrders: number; cartItemCount: number };
+}
+
 export default function ProfilePage() {
   const PRODUCTS = useProducts();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  // Signed-in user's details from the backend (GET /api/users/me).
+  const [account, setAccount] = useState<Account | null>(null);
   // Profile State
   const [profile, setProfile] = useState({
     firstName: '',
@@ -186,6 +207,25 @@ export default function ProfilePage() {
     [openPanel]
   );
 
+  useEffect(() => {
+    if (!authLoaded) return;
+    if (!isSignedIn) {
+      setAccount(null);
+      return;
+    }
+    backendFetch<Account>('/api/users/me')
+      .then((a) => {
+        setAccount(a);
+        setProfile((p) => ({
+          ...p,
+          firstName: a.user.firstName ?? p.firstName,
+          lastName: a.user.lastName ?? p.lastName,
+          email: a.user.email,
+        }));
+      })
+      .catch(() => setAccount(null));
+  }, [authLoaded, isSignedIn]);
+
   // Identity computations
   const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ');
   const avatarInitials =
@@ -206,8 +246,21 @@ export default function ProfilePage() {
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
     } catch {}
 
+    if (isSignedIn) {
+      backendFetch<{ user: Account['user'] }>('/api/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ firstName: profile.firstName, lastName: profile.lastName }),
+      })
+        .then((r) => {
+          setAccount((a) => (a ? { ...a, user: r.user } : a));
+          setProfileStatus({ msg: 'Profile saved to your account.', type: 'success' });
+        })
+        .catch((err: Error) => setProfileStatus({ msg: err.message, type: 'error' }));
+      return;
+    }
+
     setProfileStatus({
-      msg: 'Profile updated for this preview. Changes have been preserved locally.',
+      msg: 'Saved on this device. Sign in to save it to your account.',
       type: 'success',
     });
   };
@@ -340,8 +393,12 @@ export default function ProfilePage() {
         <div className="profile-layout">
           {/* Left Profile Sidebar */}
           <aside className="profile-sidebar" aria-label="Profile navigation">
-            <div id="avatar" className="profile-avatar" aria-hidden="true">
-              {avatarInitials}
+            <div id="avatar" className="profile-avatar" aria-hidden="true" style={account?.user.avatarUrl ? { overflow: 'hidden', padding: 0 } : undefined}>
+              {account?.user.avatarUrl ? (
+                <img src={account.user.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                avatarInitials
+              )}
             </div>
             <strong id="sidebar-name" className="sidebar-name">
               {fullName || 'Your profile'}
@@ -357,6 +414,9 @@ export default function ProfilePage() {
               <a href="#orders">My orders ↗</a>
               <a href="#security">Account security ↗</a>
             </div>
+            <div style={{ marginTop: 16 }}>
+              <LogoutButton className="btn btn-outline" label="Log out ↗" />
+            </div>
           </aside>
 
           {/* Right Profile Content Panels */}
@@ -365,8 +425,39 @@ export default function ProfilePage() {
             <section id="personal" className="panel">
               <div className="panel-head">
                 <h2>Personal details</h2>
-                <span className="badge">Profile preview</span>
+                <span className="badge">{account ? (account.user.role === 'ADMIN' ? 'Admin account' : 'Signed in') : 'Guest'}</span>
               </div>
+
+              {/* User information from the backend */}
+              {account ? (
+                <dl
+                  className="account-info"
+                  style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '6px 16px', margin: '0 0 20px', fontSize: 14 }}
+                >
+                  <dt className="muted">Email</dt>
+                  <dd style={{ margin: 0 }}>{account.user.email}</dd>
+                  <dt className="muted">Username</dt>
+                  <dd style={{ margin: 0 }}>{account.user.username ?? '—'}</dd>
+                  <dt className="muted">Signed in with</dt>
+                  <dd style={{ margin: 0 }}>{account.user.authProvider === 'oauth_google' ? 'Google' : 'Email & password'}</dd>
+                  <dt className="muted">Member since</dt>
+                  <dd style={{ margin: 0 }}>{new Date(account.user.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</dd>
+                  <dt className="muted">Orders</dt>
+                  <dd style={{ margin: 0 }}>
+                    {account.stats.paidOrders} confirmed · {account.stats.cancelledOrders} cancelled
+                    {account.stats.pendingOrders ? ` · ${account.stats.pendingOrders} awaiting payment` : ''}
+                  </dd>
+                  <dt className="muted">In your bag</dt>
+                  <dd style={{ margin: 0 }}>{account.stats.cartItemCount} item(s)</dd>
+                </dl>
+              ) : authLoaded && !isSignedIn ? (
+                <div className="notice" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span>Sign in to see your account details and orders.</span>
+                  <SignInButton mode="modal">
+                    <button type="button" className="btn btn-outline">Sign in ↗</button>
+                  </SignInButton>
+                </div>
+              ) : null}
 
               <form id="profile-form" onSubmit={handleProfileSubmit}>
                 <div className="fields">
@@ -406,6 +497,7 @@ export default function ProfilePage() {
                       autoComplete="email"
                       maxLength={150}
                       value={profile.email}
+                      readOnly={!!account}
                       onChange={(e) =>
                         setProfile((p) => ({ ...p, email: e.target.value }))
                       }
@@ -456,8 +548,9 @@ export default function ProfilePage() {
                   </p>
                 )}
                 <p className="notice" style={{ marginTop: 12 }}>
-                  Frontend preview: details are stored locally in your browser.
-                  Account saving will connect to the backend authentication service.
+                  {account
+                    ? 'Name is saved to your NovaTech account. Email is managed by your sign-in provider; mobile is kept on this device.'
+                    : 'Signed out: details are kept on this device only.'}
                 </p>
               </form>
             </section>
@@ -711,12 +804,16 @@ export default function ProfilePage() {
             {/* 5. Account Security Section */}
             <section id="security" className="panel">
               <h2>Account security</h2>
-              <p className="muted" style={{ margin: '8px 0 12px' }}>
-                Password changes and sign-out will become available when secure authentication is connected.
-              </p>
-              <p className="notice">
-                This preview does not collect passwords or create an authenticated session.
-              </p>
+              {isSignedIn ? (
+                <>
+                  <p className="muted" style={{ margin: '8px 0 12px' }}>
+                    You are signed in{account ? ` as ${account.user.email}` : ''}. Password and sign-in methods are managed by Clerk.
+                  </p>
+                  <LogoutButton className="btn btn-primary" label="Log out of this device" />
+                </>
+              ) : (
+                <p className="muted" style={{ margin: '8px 0 12px' }}>You are not signed in.</p>
+              )}
             </section>
           </div>
         </div>

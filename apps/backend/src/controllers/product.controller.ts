@@ -1,4 +1,6 @@
 import { HttpError, ok, type RequestContext } from "../lib/http";
+import { optionalAuth } from "../middlewares/auth.middleware";
+import { getRecommendations } from "../services/recommendation.service";
 import {
   getProductBySlug,
   getSearchSuggestions,
@@ -38,4 +40,11 @@ export async function getProductHandler(ctx: RequestContext) {
   const product = await getProductBySlug(ctx.params.slug!);
   if (!product) throw new HttpError(404, "Product not found", "PRODUCT_NOT_FOUND");
   return ok({ data: product });
+}
+
+/** GET /api/products/recommendations — top rated for guests, personalized from paid orders when signed in. */
+export async function recommendationsHandler(ctx: RequestContext) {
+  const auth = await optionalAuth(ctx).catch(() => null); // an expired token just means "guest" here
+  const limit = Math.min(Math.max(Number(ctx.url.searchParams.get("limit")) || 8, 1), 24);
+  return ok(await getRecommendations(auth?.user.id ?? null, limit));
 }

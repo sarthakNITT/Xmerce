@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import styles from "./assistant.module.css";
+import { ProductQuickView } from "../../components/ProductQuickView";
 import {
   isAssistantResponse,
   type AssistantResponse,
@@ -49,10 +50,23 @@ async function ask(message: string): Promise<AssistantResponse | null> {
   }
 }
 
-function ProductCard({ product }: { product: Recommendation }) {
+function ProductCard({ product, onOpen }: { product: Recommendation; onOpen: (productId: string) => void }) {
   const availability = AVAILABILITY[product.availability];
   return (
-    <li className={styles.card}>
+    <li
+      className={styles.card}
+      role="button"
+      tabIndex={0}
+      aria-label={`View details for ${product.productName}`}
+      style={{ cursor: "pointer" }}
+      onClick={() => onOpen(product.productId)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(product.productId);
+        }
+      }}
+    >
       <div className={styles.cardHead}>
         <h3 className={styles.productName}>{product.productName}</h3>
         <p className={styles.price}>{inr(product.price)}</p>
@@ -71,7 +85,7 @@ function ProductCard({ product }: { product: Recommendation }) {
   );
 }
 
-function AssistantReply({ turn }: { turn: Turn }) {
+function AssistantReply({ turn, onOpenProduct }: { turn: Turn; onOpenProduct: (productId: string) => void }) {
   const { response } = turn;
   if (response === undefined) {
     return (
@@ -113,7 +127,7 @@ function AssistantReply({ turn }: { turn: Turn }) {
       {response.recommendations.length > 0 && (
         <ol className={styles.cards}>
           {response.recommendations.map((product) => (
-            <ProductCard key={product.sku} product={product} />
+            <ProductCard key={product.sku} product={product} onOpen={onOpenProduct} />
           ))}
         </ol>
       )}
@@ -130,6 +144,7 @@ function AssistantReply({ turn }: { turn: Turn }) {
 
 export function Assistant() {
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [openProductId, setOpenProductId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const nextId = useRef(1);
   const endRef = useRef<HTMLDivElement>(null);
@@ -224,7 +239,7 @@ export function Assistant() {
             turns.map((turn) => (
               <div key={turn.id} className={styles.turn}>
                 <p className={styles.shopper}>{turn.text}</p>
-                <AssistantReply turn={turn} />
+                <AssistantReply turn={turn} onOpenProduct={setOpenProductId} />
               </div>
             ))
           )}
@@ -269,6 +284,7 @@ export function Assistant() {
           )}
         </div>
       </main>
+      <ProductQuickView productId={openProductId} onClose={() => setOpenProductId(null)} />
     </div>
   );
 }

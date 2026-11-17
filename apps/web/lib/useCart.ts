@@ -1,10 +1,13 @@
 'use client';
 
+import { useAuth } from '@clerk/nextjs';
 import { useState, useEffect, useCallback } from 'react';
 import type { Cart, CartItem } from './cart';
 import { cartApi, cartConfig } from './cart';
 
 export function useCart() {
+  // Re-read the cart when the user signs in/out (the backend merges the guest bag on sign-in).
+  const { userId } = useAuth();
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -54,7 +57,7 @@ export function useCart() {
       window.removeEventListener('novatech:cart-updated', handleCartUpdated as EventListener);
       window.removeEventListener('storage', handleStorage);
     };
-  }, [refreshCart]);
+  }, [refreshCart, userId]);
 
   const addItem = useCallback(async (variantId: string, quantity = 1) => {
     setBusy(true);

@@ -45,6 +45,13 @@ export default function CheckoutPage() {
     country: 'India',
   });
 
+  // Guests go to the sign-in page and come straight back here afterwards.
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.replace(`/sign-in?redirect_url=${encodeURIComponent('/checkout')}`);
+    }
+  }, [isLoaded, isSignedIn, router]);
+
   // After sign-in: move the guest bag into the account, then load totals.
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;

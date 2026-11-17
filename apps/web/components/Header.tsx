@@ -112,6 +112,19 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Actions */}
         <div className="masthead-actions">
           <a
+            href="/ask"
+            className="action-btn-plain ai-header-link"
+            aria-label="Ask NovaTech AI"
+            title="Ask NovaTech AI"
+          >
+            <svg className="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+              <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3z" />
+              <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" />
+            </svg>
+            <span className="action-label">Ask AI</span>
+          </a>
+
+          <a
             href="/profile"
             className="action-btn-plain"
             aria-label="Account sign-in, register, and profile"

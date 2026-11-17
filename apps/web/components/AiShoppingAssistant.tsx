@@ -4,9 +4,11 @@ import { useProducts } from '../lib/catalog';
 
 interface AiShoppingAssistantProps {
   onAddToCart: (productId: string) => void;
+  /** Opens the same product details modal used by the catalogue. */
+  onQuickView?: (productId: string) => void;
 }
 
-export const AiShoppingAssistant: React.FC<AiShoppingAssistantProps> = ({ onAddToCart }) => {
+export const AiShoppingAssistant: React.FC<AiShoppingAssistantProps> = ({ onAddToCart, onQuickView }) => {
   const PRODUCTS = useProducts();
   const [needText, setNeedText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -179,9 +181,15 @@ export const AiShoppingAssistant: React.FC<AiShoppingAssistantProps> = ({ onAddT
             {hits.map((p) => (
               <article key={p.id} className="ai-rec-card">
                 <div className="ai-rec-header">
-                  <strong>
+                  <button
+                    type="button"
+                    className="plain ai-rec-title-btn"
+                    onClick={() => onQuickView?.(p.id)}
+                    aria-label={`View details for ${p.name}`}
+                    style={{ font: 'inherit', fontWeight: 700, color: 'inherit', textAlign: 'left', cursor: 'pointer', padding: 0, background: 'none', border: 0, textDecoration: 'underline', textUnderlineOffset: 3 }}
+                  >
                     {p.name} · {formatINR(p.price)}
-                  </strong>
+                  </button>
                   <span className="ai-rec-status">Availability: unknown · demo data</span>
                 </div>
                 <p className="ai-rec-desc">

@@ -85,35 +85,8 @@ export default function CartPage() {
 
   const handleCheckoutClick = () => {
     if (!cart || cart.items.length === 0) return;
-
-    openPanel(
-      'Checkout handoff ready',
-      <div style={{ display: 'grid', gap: 16 }}>
-        <p>
-          The cart is validated and ready for the Java checkout and order placement module.
-        </p>
-        <div
-          style={{
-            background: '#e9eee3',
-            padding: 14,
-            borderRadius: 6,
-            fontSize: 13,
-            fontFamily: 'monospace',
-          }}
-        >
-          <div><strong>Customer Code:</strong> {customerCode || 'GUEST-SESSION'}</div>
-          <div><strong>Items count:</strong> {cart.items.reduce((s, i) => s + i.quantity, 0)}</div>
-          <div><strong>Subtotal:</strong> {formatINR(cart.totals.subtotal)}</div>
-          <div><strong>Estimated Total:</strong> {formatINR(cart.totals.total ?? cart.totals.subtotal)}</div>
-        </div>
-        <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-          {INTEGRATION_INFOS.checkout.body}
-        </p>
-        <button type="button" className="btn btn-primary" onClick={closePanel}>
-          Got it
-        </button>
-      </div>
-    );
+    // Guests are sent to sign-in by /checkout and return there with the bag merged.
+    window.location.href = '/checkout';
   };
 
   const hasItems = cart && cart.items.length > 0;
@@ -163,60 +136,15 @@ export default function CartPage() {
                     background: '#2e6930',
                   }}
                 />
-                Guest Cart (persistent device cache)
+                Guest bag · saved on our servers
               </span>
             )}
             <span style={{ color: 'var(--muted)', fontSize: 12 }}>
-              • Seamlessly preserved across reloads & synced across tabs
+              • Sign in at checkout and it moves into your account
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {!editingCustomerCode ? (
-              <button
-                type="button"
-                className="text-button"
-                style={{ minHeight: 36, padding: '4px 0', textDecoration: 'underline' }}
-                onClick={() => {
-                  setInputCustomerCode(customerCode || '');
-                  setEditingCustomerCode(true);
-                }}
-              >
-                {customerCode ? 'Switch customer code ↗' : 'Link unique customer code ↗'}
-              </button>
-            ) : (
-              <form onSubmit={handleSetCustomerCode} className="customer-code-modal-input">
-                <input
-                  type="text"
-                  placeholder="e.g. CUST-10492"
-                  value={inputCustomerCode}
-                  onChange={(e) => setInputCustomerCode(e.target.value)}
-                  autoFocus
-                />
-                <button type="submit" className="button" style={{ minHeight: 36, padding: '4px 12px', fontSize: 12 }}>
-                  Save & Merge
-                </button>
-                {customerCode && (
-                  <button
-                    type="button"
-                    className="text-button"
-                    style={{ minHeight: 36, padding: '4px 6px', fontSize: 12 }}
-                    onClick={handleClearCustomerCode}
-                  >
-                    Unlink
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="text-button"
-                  style={{ minHeight: 36, padding: '4px 6px', fontSize: 12 }}
-                  onClick={() => setEditingCustomerCode(false)}
-                >
-                  Cancel
-                </button>
-              </form>
-            )}
-          </div>
+
         </section>
 
         {/* Feedback / Error banner */}
@@ -443,7 +371,7 @@ export default function CartPage() {
               </dl>
 
               <p className="notice" style={{ margin: '14px 0 0', fontSize: 12 }}>
-                Browser-local persistent cache. Stock, discounts, and regional taxes will be finalized by the checkout service.
+                Prices and stock come live from the store. Shipping is calculated at checkout.
               </p>
 
               <button

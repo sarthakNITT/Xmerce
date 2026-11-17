@@ -1,6 +1,5 @@
 import { formatINR } from '../data/products';
 import { getProducts } from './catalog';
-import { API_URL } from './api';
 
 export interface CartItem {
   id: string; // Line item ID (matches productId in demo mode, or variantId/lineId in API mode)
@@ -149,28 +148,20 @@ interface BackendCart {
   hasIssues: boolean;
 }
 
-/** Clerk session token when signed in (Clerk exposes itself on window). */
-export async function getSessionToken(): Promise<string | null> {
-  if (typeof window === 'undefined') return null;
-  const clerk = (window as unknown as { Clerk?: { session?: { getToken: () => Promise<string | null> } | null } }).Clerk;
-  try {
-    return (await clerk?.session?.getToken()) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/** fetch() against the backend with the guest cookie and Clerk token attached. */
+/**
+ * fetch() to the backend through the same-origin proxy (app/api/store), which
+ * attaches the signed-in user's Clerk token on the server and keeps the guest
+ * cart cookie first-party. `path` is the backend path, e.g. "/api/cart".
+ */
 export async function backendFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = await getSessionToken();
-  const res = await fetch(`${API_URL}${path}`, {
+  const proxied = path.replace(/^\/api\//, '/api/store/');
+  const res = await fetch(proxied, {
     ...init,
-    credentials: 'include',
+    credentials: 'same-origin',
     cache: 'no-store',
     headers: {
       Accept: 'application/json',
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
   });
