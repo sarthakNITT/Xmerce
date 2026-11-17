@@ -1,0 +1,38 @@
+{
+  "name": "@repo/rag",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./openrouter": "./src/generate/openrouter.ts"
+  },
+  "scripts": {
+    "generate:pdf": "bun scripts/generate-pdf.ts",
+    "ingest": "bun --env-file=../../.env src/cli/ingest.ts",
+    "ask": "bun --env-file=../../.env src/cli/ask.ts",
+    "test": "bun test",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/bun": "latest",
+    "@types/pg": "^8.23.1",
+    "eslint": "10.9.1",
+    "pdf-lib": "^1.17.1",
+    "typescript": "7.0.2"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "@langchain/community": "^1.1.29",
+    "@langchain/core": "^1.4.1",
+    "@langchain/textsplitters": "^1.0.2",
+    "@neondatabase/serverless": "^1.2.1",
+    "langchain": "^1.6.6",
+    "pg": "^8.23.1",
+    "unpdf": "^2.2.1",
+    "zod": "^4.6.7"
+  }
+}
