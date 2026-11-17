@@ -4,17 +4,18 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
+  src: './fonts/GeistVF.woff',
+  variable: '--font-geist-sans',
 });
 const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
+  src: './fonts/GeistMonoVF.woff',
+  variable: '--font-geist-mono',
 });
 
 export const metadata: Metadata = {
-  title: "Xmerce",
-  description: "Xmerce store",
+  title: 'NovaTech — Make room for your next big idea',
+  description:
+    'Discover NovaTech computers. Explore the sample catalogue and find a device for your next big idea.',
 };
 
 export default function RootLayout({
@@ -24,8 +25,10 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body>
+      <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+        <body className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "7.10.1",
+    "@neondatabase/serverless": "^1.2.1",
     "@repo/ui": "*",
     "next": "16.3.8",
     "react": "19.2.8",
