@@ -1,0 +1,26 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "properties": {
+      "id": { "type": "keyword" },
+      "keyword": {
+        "type": "text",
+        "analyzer": "standard",
+        "fields": {
+          "keyword": { "type": "keyword" }
+        }
+      },
+      "normalizedKeyword": { "type": "keyword" },
+      "productId": { "type": "keyword" },
+      "category": { "type": "keyword" },
+      "brand": { "type": "keyword" },
+      "synonyms": { "type": "text" },
+      "isActive": { "type": "boolean" },
+      "createdAt": { "type": "date" },
+      "updatedAt": { "type": "date" }
+    }
+  }
+}
