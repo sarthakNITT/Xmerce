@@ -1,13 +1,17 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f7fb;
+  --foreground: #111827;
+  --panel: #ffffff;
+  --muted: #5b6474;
+  --accent: #0d6efd;
+  --accent-strong: #0a4fc3;
+  --line: rgba(17, 24, 39, 0.08);
+  --success: #1a9b63;
+  --shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 html,
@@ -17,8 +21,9 @@ body {
 }
 
 body {
+  background: linear-gradient(180deg, #f5f7fb 0%, #eef4ff 100%);
   color: var(--foreground);
-  background: var(--background);
+  font-family: var(--font-geist-sans), sans-serif;
 }
 
 * {
@@ -32,19 +37,13 @@ a {
   text-decoration: none;
 }
 
-.imgDark {
-  display: none;
+button,
+input,
+select {
+  font: inherit;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
-
-  .imgLight {
-    display: none;
-  }
-  .imgDark {
-    display: unset;
-  }
+img {
+  max-width: 100%;
+  display: block;
 }
