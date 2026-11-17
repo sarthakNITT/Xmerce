@@ -1,19 +1,8 @@
+import { ok, type RequestContext } from "../lib/http";
 import { requireAuth } from "../middlewares/auth.middleware";
-import { getUserByClerkId } from "../services/user.service";
 
-export async function getProfile(req: Request): Promise<Response> {
-  const authResult = await requireAuth(req);
-  if (authResult.error) return authResult.error;
-
-  const auth = authResult.auth!;
-  const user = auth.user || (await getUserByClerkId(auth.userId));
-
-  if (!user) {
-    return Response.json({ error: "User record not found in database" }, { status: 404 });
-  }
-
-  return Response.json({
-    success: true,
-    user,
-  });
+/** GET /api/auth/me — the signed-in user's DB record (created from Clerk if the webhook hasn't run yet). */
+export async function getProfile(ctx: RequestContext) {
+  const { user } = await requireAuth(ctx);
+  return ok({ user });
 }

@@ -19,6 +19,9 @@ model User {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  cart   Cart?
+  orders Order[]
+
   @@index([email])
   @@index([clerkId])
 }
@@ -52,6 +55,9 @@ model Product {
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -61,4 +67,107 @@ model Product {
   @@index([price])
   @@index([rating])
   @@index([inStock])
+}
+
+// A cart belongs to exactly one owner: a signed-in user (userId) OR a guest (guestId).
+// Guest carts live server-side, keyed by an id kept in an HttpOnly cookie, so they
+// survive the browser being closed. On sign-in the guest cart is merged into the user's cart.
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String?    @unique
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestId   String?    @unique
+  expiresAt DateTime? // guest carts only; refreshed on every write
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([expiresAt])
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
+}
+
+enum PaymentStatus {
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD
+  UPI
+  NET_BANKING
+  WALLET
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          OrderStatus @default(PENDING_PAYMENT)
+  subtotal        Float
+  shippingFee     Float
+  tax             Float
+  total           Float
+  shippingAddress Json
+  expiresAt       DateTime? // unpaid orders release their reserved stock after this
+  paidAt          DateTime?
+  cancelledAt     DateTime?
+  items           OrderItem[]
+  payments        Payment[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+}
+
+// Snapshot of the product at purchase time, so order history survives price edits or deletes.
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  title     String
+  slug      String
+  image     String?
+  unitPrice Float
+  quantity  Int
+  lineTotal Float
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  orderId       String
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount        Float
+  method        PaymentMethod
+  status        PaymentStatus
+  transactionId String        @unique
+  failureReason String?
+  createdAt     DateTime      @default(now())
+
+  @@index([orderId])
 }

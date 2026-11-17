@@ -1,49 +1,56 @@
-import { handleAuthRoutes } from "./routes/auth.routes";
-import { handleProductRoutes } from "./routes/product.routes";
+import { appConfig } from "./config/app";
+import { cacheKind } from "./lib/cache";
+import { applyCors, errorResponse, HttpError, preflight, type RequestContext } from "./lib/http";
+import { Router } from "./lib/router";
+import { startCleanupJob } from "./jobs/cleanup.job";
+import { registerAuthRoutes } from "./routes/auth.routes";
+import { registerCartRoutes } from "./routes/cart.routes";
+import { registerOrderRoutes } from "./routes/order.routes";
+import { registerProductRoutes } from "./routes/product.routes";
+import { registerUserRoutes } from "./routes/user.routes";
 
-const PORT = Number(process.env.PORT) || 4000;
+const router = new Router();
+registerAuthRoutes(router);
+registerUserRoutes(router);
+registerProductRoutes(router);
+registerCartRoutes(router);
+registerOrderRoutes(router);
 
 const server = Bun.serve({
-  port: PORT,
+  port: appConfig.port,
+  // Bun closes requests after 10s by default; checkout/merge transactions on a
+  // remote DB over a slow link can take longer than that.
+  idleTimeout: 60,
   async fetch(req) {
+    if (req.method === "OPTIONS") return preflight(req);
+
     const url = new URL(req.url);
-
-    // CORS preflight
-    if (req.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization, svix-id, svix-timestamp, svix-signature",
-        },
-      });
-    }
-
-    // Health check
     if (url.pathname === "/health" || url.pathname === "/") {
-      return Response.json({
-        status: "ok",
-        service: "xmerce-backend",
-        timestamp: new Date().toISOString(),
-      });
+      return applyCors(
+        req,
+        Response.json({ status: "ok", service: "xmerce-backend", cache: cacheKind, timestamp: new Date().toISOString() }),
+      );
     }
 
-    // Auth & Webhook routes
-    const authResponse = await handleAuthRoutes(req, url.pathname);
-    if (authResponse) {
-      authResponse.headers.set("Access-Control-Allow-Origin", "*");
-      return authResponse;
+    const match = router.match(req.method, url.pathname);
+    const ctx: RequestContext = { req, url, params: match?.params ?? {}, setCookies: [] };
+
+    let res: Response;
+    try {
+      res = match ? await match.handler(ctx) : errorResponse(404, "Route not found", "NOT_FOUND");
+    } catch (err) {
+      if (err instanceof HttpError) {
+        res = errorResponse(err.status, err.message, err.code);
+      } else {
+        console.error(`[${req.method} ${url.pathname}]`, err);
+        res = errorResponse(500, "Internal server error", "INTERNAL_ERROR");
+      }
     }
 
-    // Product & Search routes
-    const productResponse = await handleProductRoutes(req, url.pathname);
-    if (productResponse) {
-      productResponse.headers.set("Access-Control-Allow-Origin", "*");
-      return productResponse;
-    }
-
-    return Response.json({ error: "Route not found" }, { status: 404 });
+    for (const cookie of ctx.setCookies) res.headers.append("Set-Cookie", cookie);
+    return applyCors(req, res);
   },
 });
 
-console.log(`🚀 Backend running at http://localhost:${server.port}`);
+startCleanupJob();
+console.log(`🚀 Backend running at http://localhost:${server.port} (cache: ${cacheKind})`);

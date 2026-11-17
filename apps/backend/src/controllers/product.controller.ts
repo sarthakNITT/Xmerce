@@ -1,67 +1,41 @@
-import { searchProducts, getSearchSuggestions, getProductBySlug } from "../services/product.service";
+import { HttpError, ok, type RequestContext } from "../lib/http";
+import {
+  getProductBySlug,
+  getSearchSuggestions,
+  searchProducts,
+  type SearchProductsParams,
+} from "../services/product.service";
 
-export async function handleSearchProducts(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const query = url.searchParams.get("q") || undefined;
-  const category = url.searchParams.get("category") || undefined;
-  const minPrice = url.searchParams.has("minPrice") ? Number(url.searchParams.get("minPrice")) : undefined;
-  const maxPrice = url.searchParams.has("maxPrice") ? Number(url.searchParams.get("maxPrice")) : undefined;
-  const brand = url.searchParams.get("brand") || undefined;
-  const color = url.searchParams.get("color") || undefined;
-  const inStock = url.searchParams.has("inStock") ? url.searchParams.get("inStock") === "true" : undefined;
-  const minRating = url.searchParams.has("minRating") ? Number(url.searchParams.get("minRating")) : undefined;
-  const sortBy = url.searchParams.get("sortBy") as any;
-  const page = Number(url.searchParams.get("page")) || 1;
-  const limit = Number(url.searchParams.get("limit")) || 20;
+const num = (v: string | null) => (v === null || v === "" ? undefined : Number(v));
 
-  try {
-    const result = await searchProducts({
-      query,
-      category,
-      minPrice,
-      maxPrice,
-      brand,
-      color,
-      inStock,
-      minRating,
-      sortBy,
-      page,
-      limit,
-    });
-
-    return Response.json({
-      success: true,
-      ...result,
-    });
-  } catch (error: any) {
-    console.error("Product search error:", error);
-    return Response.json({ error: "Failed to search products: " + error.message }, { status: 500 });
-  }
+/** GET /api/products/search — lean product cards for the results page (cached). */
+export async function searchProductsHandler(ctx: RequestContext) {
+  const sp = ctx.url.searchParams;
+  const result = await searchProducts({
+    query: sp.get("q") || undefined,
+    category: sp.get("category") || undefined,
+    minPrice: num(sp.get("minPrice")),
+    maxPrice: num(sp.get("maxPrice")),
+    brand: sp.get("brand") || undefined,
+    color: sp.get("color") || undefined,
+    inStock: sp.has("inStock") ? sp.get("inStock") === "true" : undefined,
+    minRating: num(sp.get("minRating")),
+    sortBy: (sp.get("sortBy") || undefined) as SearchProductsParams["sortBy"],
+    page: num(sp.get("page")),
+    limit: num(sp.get("limit")),
+  });
+  return ok(result);
 }
 
-export async function handleSearchSuggestions(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const q = url.searchParams.get("q") || "";
-
-  try {
-    const suggestions = await getSearchSuggestions(q);
-    return Response.json({
-      success: true,
-      data: suggestions,
-    });
-  } catch (error: any) {
-    return Response.json({ error: "Failed to fetch suggestions: " + error.message }, { status: 500 });
-  }
+/** GET /api/products/suggest?q= — typeahead for the search bar. */
+export async function searchSuggestionsHandler(ctx: RequestContext) {
+  const q = (ctx.url.searchParams.get("q") || "").slice(0, 100);
+  return ok({ data: await getSearchSuggestions(q) });
 }
 
-export async function handleGetProductDetails(req: Request, slug: string): Promise<Response> {
-  try {
-    const product = await getProductBySlug(slug);
-    if (!product) {
-      return Response.json({ error: "Product not found" }, { status: 404 });
-    }
-    return Response.json({ success: true, data: product });
-  } catch (error: any) {
-    return Response.json({ error: "Failed to fetch product: " + error.message }, { status: 500 });
-  }
+/** GET /api/products/:slug — full product page. */
+export async function getProductHandler(ctx: RequestContext) {
+  const product = await getProductBySlug(ctx.params.slug!);
+  if (!product) throw new HttpError(404, "Product not found", "PRODUCT_NOT_FOUND");
+  return ok({ data: product });
 }
